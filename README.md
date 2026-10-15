@@ -39,9 +39,21 @@ curl -fsSL https://raw.githubusercontent.com/nkyriazis/unspin/main/install.sh | 
 
 [More ways to install](#more-ways-to-install) covers both at once, other agents and installing from a clone.
 
+## Everyday use
+
+Nothing changes in how you work. When Claude batches several steps into one command or starts something long, such as a build, a test run, a loop over files or a wait for a server, the skill has it mark the steps, and you watch them as they go. When it writes a batched command without them, a hook reminds it.
+
+To make it a habit in every session, add a line like this to `~/.claude/CLAUDE.md`.
+
+```
+Use the unspin skill for batched and long-running shell commands, so I can see their steps and progress live.
+```
+
+You can also ask for it in a prompt, as in "run the migration with unspin". A long job can run in the background with its progress in view.
+
 ## What the agent writes
 
-You don't write any of this. Claude does, whenever it batches several steps or starts something long, because the skill teaches it to.
+The skill gives Claude a few shell functions. A typical command looks like this.
 
 ```bash
 source "${CLAUDE_SKILL_DIR}/unspin.sh"
