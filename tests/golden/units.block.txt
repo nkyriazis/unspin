@@ -1,0 +1,5 @@
+▶ Units  step 4 · 4 running · 1m15s
+  ⠴ download 1m15s  ━━╾─────── 512Mi/2Gi · model.safetensors
+  ⠴ percent 1m15s  ━━━━━━━━━╾ 99.5% · almost
+  ⠴ bare count 1m15s · 1532 · lines
+  ⠴ label only 1m15s · Compiling serde v1.0.130

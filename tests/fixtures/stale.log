@@ -1,0 +1,5 @@
+@1792047000.000 Deploy [3]
+▶ @1792047000.100 id=5.1 pid=ALIVE uploading
+✔ @1792047003.200 id=5.1
+▶ @1792047003.300 id=5.2 pid=DEAD migrating database
+% @1792047010.000 id=5.2 3/9 0042_add_index.sql

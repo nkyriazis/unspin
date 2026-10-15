@@ -1,0 +1,324 @@
+#!/usr/bin/env bash
+# unspin: draw flows (see unspin.sh) live, and wire them into your agent.
+#
+#   unspin statusline [opts] [-- base-cmd...]   status line command
+#   unspin block <session-id>                   the flow block, for your own script
+#   unspin watch [session]                      live view in this terminal
+#   unspin tmux [session]                       one line for tmux status-right
+#   unspin show [session]                       print the last flow
+#   unspin demo                                 run a demo flow
+#   unspin setup | uninstall | doctor           wire into Claude Code
+#   unspin path                                 where unspin.sh lives
+#   unspin step|ok|fail|note|progress|title ... emit events from any language
+set -u
+
+VERSION=1.0.0
+PROG=${0##*/}
+
+# The skill directory (this file is bin/unspin inside it), symlinks resolved
+# without readlink -f, which older macOS lacks.
+self=$0
+while [ -L "$self" ]; do
+    link=$(readlink "$self")
+    case $link in /*) self=$link ;; *) self=${self%/*}/$link ;; esac
+done
+ROOT=$(cd "${self%/*}/.." && pwd -P)
+
+die() { printf '%s: %s\n' "$PROG" "$*" >&2; exit 1; }
+
+# Same resolution as unspin.sh.
+flow_dir() {
+    if [ -n "${UNSPIN_DIR:-}" ]; then printf '%s' "$UNSPIN_DIR"
+    elif [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR" ]; then printf '%s/unspin' "$XDG_RUNTIME_DIR"
+    else printf '/tmp/unspin-%s' "${UID:-$(id -u)}"
+    fi
+}
+
+safe_sid() { printf '%s' "$1" | tr -c 'A-Za-z0-9._-' _; }
+
+# The most recently written flow, for viewers that are not tied to a session.
+latest_file() {
+    local d f
+    d=$(flow_dir)
+    f=$(ls -t "$d"/*.log 2>/dev/null | head -n 1)
+    printf '%s' "$f"
+}
+
+# Same order as unspin.sh: the first agent session id that is set.
+agent_sid() {
+    printf '%s' "${UNSPIN_SESSION:-${CLAUDE_CODE_SESSION_ID:-${COPILOT_AGENT_SESSION_ID:-${CODEX_SESSION_ID:-${CODEX_THREAD_ID:-${CURSOR_CONVERSATION_ID:-${OPENCODE_SESSION_ID:-${AMP_CURRENT_THREAD_ID:-${AGENT_SESSION_ID:-}}}}}}}}}"
+}
+
+session_file() {
+    if [ -n "${1:-}" ]; then
+        case $1 in */*) printf '%s' "$1" ;; *) printf '%s/%s.log' "$(flow_dir)" "$(safe_sid "$1")" ;; esac
+    elif [ -n "${UNSPIN_FILE:-}" ]; then
+        printf '%s' "$UNSPIN_FILE"
+    elif [ -n "$(agent_sid)" ]; then
+        printf '%s/%s.log' "$(flow_dir)" "$(safe_sid "$(agent_sid)")"
+    else
+        latest_file
+    fi
+}
+
+now_s() {
+    if [ -n "${EPOCHREALTIME:-}" ]; then printf '%s' "${EPOCHREALTIME/,/.}"
+    else date +%s
+    fi
+}
+
+ROWS=${UNSPIN_ROWS:-4}
+WIDTH=${UNSPIN_WIDTH:-}
+ASCII=${UNSPIN_ASCII:-0}
+SPIN=1
+if [ -n "${NO_COLOR:-}" ]; then COLOR=0; else COLOR=${UNSPIN_COLOR:-1}; fi
+
+# render FILE MODE: the flow drawn by lib/render.awk.
+render() {
+    local procfs=0 myns=''
+    [ -r /proc/self/stat ] && procfs=1
+    if [ -r /proc/self/ns/pid ]; then
+        myns=$(readlink /proc/self/ns/pid 2>/dev/null)
+        myns=${myns//[!0-9]/}
+    fi
+    LC_ALL=C awk -v mode="$2" -v rows="$ROWS" -v width="${WIDTH:-100}" \
+        -v color="$COLOR" -v ascii="$ASCII" -v now="$(now_s)" -v spin="$SPIN" \
+        -v procfs="$procfs" -v myns="$myns" -f "$ROOT/lib/render.awk" "$1" 2>/dev/null
+}
+
+# Width of the terminal Claude Code runs in. A status line command has no
+# terminal of its own, so ask the nearest ancestor that has one, and keep the
+# answer for a few seconds (this runs every second).
+status_width() {
+    local cache now pid tty w i
+    if [ -n "${UNSPIN_WIDTH:-}" ]; then printf '%s' "$UNSPIN_WIDTH"; return; fi
+    if [ -n "${COLUMNS:-}" ] && [ "${COLUMNS:-0}" -gt 20 ] 2>/dev/null; then printf '%s' "$COLUMNS"; return; fi
+    cache=$(flow_dir)/.width.$PPID
+    now=$(now_s); now=${now%.*}
+    if [ -r "$cache" ]; then
+        read -r t w < "$cache"
+        if [ -n "${w:-}" ] && [ $((now - ${t:-0})) -lt 5 ] 2>/dev/null; then printf '%s' "$w"; return; fi
+    fi
+    w='' pid=$PPID
+    for i in 1 2 3 4 5; do
+        tty=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
+        case $tty in
+            '' | '?' | '??') pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') ;;
+            *)
+                case $tty in /*) ;; *) tty=/dev/$tty ;; esac
+                w=$(stty size < "$tty" 2>/dev/null) && w=${w#* }
+                break ;;
+        esac
+        [ -n "$pid" ] && [ "$pid" != 1 ] || break
+    done
+    case $w in '' | *[!0-9]*) w=100 ;; esac
+    printf '%s %s\n' "$now" "$w" > "$cache" 2>/dev/null
+    printf '%s' "$w"
+}
+
+json_str() {
+    local re="\"$1\"[[:space:]]*:[[:space:]]*\"([^\"]*)\""
+    if [[ $2 =~ $re ]]; then printf '%s' "${BASH_REMATCH[1]}"; fi
+}
+
+# ------------------------------------------------------------------ viewers
+
+cmd_statusline() {
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --rows) ROWS=$2; shift ;;
+            --rows=*) ROWS=${1#*=} ;;
+            --line) STYLE=line ;;
+            --ascii) ASCII=1 ;;
+            --no-color) COLOR=0 ;;
+            --) shift; break ;;
+            *) break ;;
+        esac
+        shift
+    done
+    local input base='' sid file block=''
+    input=$(cat)
+    # The status line you had before: same input, printed first.
+    if [ $# -gt 0 ]; then base=$(printf '%s' "$input" | "$@" 2>/dev/null) || :; fi
+    sid=$(json_str session_id "$input")
+    if [ -n "$sid" ]; then
+        file=$(flow_dir)/$(safe_sid "$sid").log
+        if [ -s "$file" ]; then
+            WIDTH=$(status_width)
+            : >| "$(flow_dir)/.seen" 2>/dev/null
+            block=$(render "$file" "${STYLE:-block}")
+        fi
+    fi
+    printf '%s' "$base"
+    if [ -n "$block" ]; then
+        if [ -n "$base" ]; then printf '\n'; fi
+        printf '%s' "$block"
+    fi
+    exit 0
+}
+
+# For status line scripts of your own: `unspin block "$session_id"` after
+# your own output prints the flow block, or nothing when there is none.
+cmd_block() {
+    local file
+    [ -n "${1:-}" ] || die "usage: $PROG block <session-id>"
+    file=$(flow_dir)/$(safe_sid "$1").log
+    [ -s "$file" ] || exit 0
+    WIDTH=$(status_width)
+    : >| "$(flow_dir)/.seen" 2>/dev/null
+    render "$file" "${UNSPIN_STYLE:-block}"
+}
+
+cmd_watch() {
+    local file=${1:-} f out lines cols
+    command -v tput > /dev/null || die "watch needs tput"
+    SPIN=4
+    printf '\033[?1049h\033[?25l'
+    trap 'printf "\033[?25h\033[?1049l"' EXIT
+    trap 'exit 0' INT TERM
+    while :; do
+        lines=$(tput lines 2>/dev/null || echo 24)
+        cols=$(tput cols 2>/dev/null || echo 80)
+        ROWS=$((lines - 2)) WIDTH=$cols
+        f=${file:+$(session_file "$file")}
+        f=${f:-$(session_file "")}
+        if [ -n "$f" ] && [ -s "$f" ]; then
+            out=$(render "$f" full)
+        else
+            out="waiting for a flow in $(flow_dir) ..."
+        fi
+        printf '\033[H%s\033[J' "${out//$'\n'/$'\033[K\n'}"
+        sleep 0.25
+    done
+}
+
+cmd_tmux() {
+    local f
+    f=$(session_file "${1:-}")
+    [ -n "$f" ] && [ -s "$f" ] || exit 0
+    # Finished flows fade out of the tmux bar after a minute.
+    if [ -z "$(find "$f" -newermt '-60 seconds' 2>/dev/null)" ] && ! grep -q '^▶' "$f" 2>/dev/null; then exit 0; fi
+    COLOR=0 WIDTH=${UNSPIN_WIDTH:-80}
+    render "$f" line
+}
+
+cmd_show() {
+    local f
+    f=$(session_file "${1:-}")
+    if [ -z "$f" ] || [ ! -s "$f" ]; then
+        if [ -n "$f" ] && [ -s "$f.prev" ]; then f=$f.prev; else die "no flow to show"; fi
+    fi
+    [ -t 1 ] || COLOR=0
+    ROWS=100000 WIDTH=${UNSPIN_WIDTH:-$(tput cols 2>/dev/null || echo 100)}
+    render "$f" full
+}
+
+# unspin demo: a made-up release. In a terminal it draws the flow in place as
+# it goes. Under an agent it runs like any instrumented command, so the flow
+# shows wherever unspin draws, then prints the flow for the agent to read.
+cmd_demo() {
+    # shellcheck source=../unspin.sh
+    . "$ROOT/unspin.sh"
+    if [ -t 1 ]; then
+        demo_flow > /dev/null 2>&1 &
+        draw_live "$UNSPIN_FILE" $!
+    else
+        demo_flow
+        printf 'unspin demo: a made-up release, nothing was installed, built or tested. The flow it showed:\n\n'
+        COLOR=0 ROWS=100000 WIDTH=${UNSPIN_WIDTH:-100}
+        render "$UNSPIN_FILE" full
+    fi
+}
+
+# Redraws FILE in place under the cursor until PID exits, then leaves the
+# final state on screen.
+draw_live() {
+    local f=$1 pid=$2 out n=0 alive
+    SPIN=5 ROWS=100000
+    printf '\033[?25l'
+    trap 'kill "$pid" 2>/dev/null; printf "\033[?25h\n"; exit 130' INT TERM
+    while :; do
+        kill -0 "$pid" 2>/dev/null && alive=1 || alive=0
+        WIDTH=$(($(tput cols 2>/dev/null || echo 80) - 1))
+        out=$(render "$f" full)
+        if [ "$n" -gt 0 ]; then printf '\033[%dA' "$n"; fi
+        printf '\r%s\033[K\n\033[J' "${out//$'\n'/$'\033[K\n'}"
+        n=$(printf '%s\n' "$out" | wc -l)
+        [ "$alive" = 1 ] || break
+        sleep 0.2
+    done
+    printf '\033[?25h'
+    trap - INT TERM
+    wait "$pid" 2> /dev/null || true
+}
+
+demo_flow() {
+    local i label
+    flow "Ship the release" 6
+    step "installing dependencies"
+    for i in $(seq 1 48); do progress "$i" 48 "package $i of 48"; sleep 0.06; done
+    run "linting" sleep 1.2
+    step "running tests"
+    for i in $(seq 1 120); do
+        label="test_$i.py"
+        if [ "$i" -gt 87 ]; then label="$label · 1 failed"; fi
+        progress "$i" 120 "$label"
+        sleep 0.03
+    done
+    fail "1 of 120 failed"
+    note "test_88.py is a known flake, carrying on"
+    build() {
+        local i
+        for i in $(seq 1 "$2"); do progress "$i" "$2" "$1/module_$i.o"; sleep 0.12; done
+    }
+    run "building linux" build linux 30 &
+    run "building macos" build macos 42 &
+    wait
+    flow_wait -t 10 "waiting for the preview server" -- sh -c '[ "$(date +%s)" -ge '"$(( $(date +%s) + 3 ))"' ]'
+    note "preview is up at http://localhost:3000"
+}
+
+# --------------------------------------------------------------- emitters
+
+# Events from any language: `unspin progress 3 10 name` from a Python loop.
+# Steps opened here belong to the calling process (our parent), so they show
+# as interrupted if it dies before closing them.
+cmd_emit() {
+    local verb=$1 f t
+    shift
+    f=$(session_file "")
+    [ -n "$f" ] || f=$(flow_dir)/default.log
+    mkdir -p "${f%/*}" 2>/dev/null
+    t=$(now_s)
+    case $verb in
+        title) printf '@%s %s%s\n' "$t" "${1:-}" "${2:+ [$2]}" > "$f" ;;
+        step) printf '▶ @%s id=%s.%s pid=%s %s\n' "$t" "$PPID" "${t//./}" "$PPID" "$*" >> "$f" ;;
+        ok) printf '✔ @%s %s\n' "$t" "$*" >> "$f" ;;
+        fail) printf '✘ @%s %s\n' "$t" "$*" >> "$f" ;;
+        note) printf '· @%s %s\n' "$t" "$*" >> "$f" ;;
+        progress) printf '%% @%s %s%s%s\n' "$t" "${1:--}" "${2:+/$2}" "${3:+ $3}" >> "$f" ;;
+    esac
+}
+
+cmd_help() {
+    sed -n '2,12p' "$ROOT/bin/unspin" | sed 's/^# \{0,1\}//'
+}
+
+cmd=${1:-help}
+[ $# -gt 0 ] && shift
+case $cmd in
+    statusline) cmd_statusline "$@" ;;
+    block) cmd_block "$@" ;;
+    watch) cmd_watch "$@" ;;
+    tmux) cmd_tmux "$@" ;;
+    show) cmd_show "$@" ;;
+    demo) cmd_demo "$@" ;;
+    setup | install) . "$ROOT/lib/setup.sh"; setup_main "$@" ;;
+    uninstall) . "$ROOT/lib/setup.sh"; setup_uninstall "$@" ;;
+    doctor) . "$ROOT/lib/setup.sh"; setup_doctor "$@" ;;
+    path) printf '%s\n' "$ROOT/unspin.sh" ;;
+    title | step | ok | fail | note | progress) cmd_emit "$cmd" "$@" ;;
+    version | --version | -V) printf '%s %s\n' "$PROG" "$VERSION" ;;
+    help | --help | -h) cmd_help ;;
+    *) die "unknown command: $cmd (try $PROG help)" ;;
+esac

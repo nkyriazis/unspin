@@ -1,0 +1,17 @@
+{
+  "description": "unspin: the running step in Claude Code's spinner and the flow above the prompt; a nudge to instrument batched Bash commands; the finished flow put away on the next prompt",
+  "modules": ["./register.ts"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/unspin/hooks/nudge.sh\"", "timeout": 5 }]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [{ "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/unspin/hooks/dismiss.sh\"", "timeout": 5 }]
+      }
+    ]
+  }
+}

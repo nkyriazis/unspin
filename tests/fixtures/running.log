@@ -1,0 +1,14 @@
+@1792047000.100 Ship the release [6]
+▶ @1792047000.200 id=1.1 pid=ALIVE installing dependencies
+% @1792047005.000 id=1.1 48/48 package 48 of 48
+✔ @1792047014.400 id=1.1
+▶ @1792047014.500 id=1.2 pid=ALIVE linting
+✔ @1792047015.700 id=1.2
+▶ @1792047015.800 id=1.3 pid=ALIVE running tests
+% @1792047016.000 id=1.3 12/120 test_12.py
+% @1792047039.000 id=1.3 120/120 test_120.py · 1 failed
+✘ @1792047039.100 id=1.3 1 of 120 failed
+· @1792047039.200 test_88.py is a known flake, carrying on
+▶ @1792047039.300 id=1.4 pid=ALIVE building image
+% @1792047040.000 id=1.4 0/72 starting
+% @1792047070.000 id=1.4 37/72 layer sha256:ab12cd34ef56

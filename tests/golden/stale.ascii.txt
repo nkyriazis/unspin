@@ -1,0 +1,5 @@
+x Deploy  2 steps, 1 interrupted - 10s
+  + uploading 3.1s
+  x migrating database 3/9 - interrupted
+.
+.

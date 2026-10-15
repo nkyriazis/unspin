@@ -1,0 +1,14 @@
+@1792047000 Build all targets
+▶ @1792047001 id=7.1 pid=ALIVE build linux
+▶ @1792047002 id=8.2 pid=ALIVE build macos
+% @1792047060 id=7.1 45% linking
+% @1792047060 id=8.2 12/40 compiling src/main.c
+▶ @1792047003 id=9.3 pid=ALIVE fetch assets
+✔ @1792047010 id=9.3
+▶ @1792047011 id=9.4 pid=ALIVE check licenses
+✔ @1792047012 id=9.4
+· @1792047013 cache warm
+▶ @1792047014 id=9.5 pid=ALIVE lint
+✔ @1792047020 id=9.5 clean
+▶ @1792047021 id=9.6 pid=ALIVE docs
+✔ @1792047025 id=9.6

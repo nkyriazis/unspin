@@ -1,0 +1,5 @@
+✘ Ünïcödé ✨ and a very long title that will need to …  1 step, 1 failed · 1m02s
+  ✘ 処理中のファイル 3/10 — ❌ failed: 文字化け 1m01s
+  · combining: é and tab inside
+⠀
+⠀

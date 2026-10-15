@@ -1,0 +1,3 @@
+#!/bin/sh
+# The Claude Code plugin puts this folder on the Bash tool's PATH.
+exec "$(dirname "$0")/../skills/unspin/bin/unspin" "$@"

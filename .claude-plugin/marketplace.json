@@ -1,0 +1,12 @@
+{
+  "name": "unspin",
+  "owner": { "name": "Nikolaos Kyriazis", "email": "nkyriazis@gmail.com" },
+  "description": "unspin: live steps and progress for your agent's shell commands",
+  "plugins": [
+    {
+      "name": "unspin",
+      "source": "./",
+      "description": "Live steps, progress bars, elapsed time and ETAs for batched shell commands, in Claude Code's spinner, above the prompt, or in the status line."
+    }
+  ]
+}

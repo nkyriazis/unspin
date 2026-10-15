@@ -1,0 +1,3 @@
+[31m✘[0m [1mÜnïcödé ✨ and a very long title that will need to …[0m[2m  1 step, 1 failed · 1m02s[0m
+  [31m✘[0m 処理中のファイル 3/10 — ❌ failed: 文字化け[2m 1m01s[0m
+  [2m·[0m [2mcombining: é and tab inside[0m

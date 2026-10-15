@@ -1,0 +1,6 @@
+@1792047000.000 Convert the scans [2]
+▶ @1792047000.100 id=3.1 pid=ALIVE converting
+% @1792047040.000 id=3.1 172/172 Mathimatika_G.pdf
+✔ @1792047040.300 id=3.1
+▶ @1792047040.400 id=3.2 pid=ALIVE zipping
+✔ @1792047041.000 id=3.2 scans.zip, 48 MB

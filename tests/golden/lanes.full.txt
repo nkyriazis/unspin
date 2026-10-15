@@ -1,0 +1,8 @@
+▶ Build all targets  step 6 · 2 running · 1m15s
+  ⠴ build linux 1m14s  ━━━━╾───── 45% · linking
+  ⠴ build macos 1m13s  ━━━─────── 12/40 · compiling src/main.c
+  ✔ fetch assets 7s
+  ✔ check licenses 1s
+  · cache warm
+  ✔ lint — clean 6s
+  ✔ docs 4s

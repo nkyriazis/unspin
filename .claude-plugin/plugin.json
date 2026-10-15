@@ -1,0 +1,10 @@
+{
+  "name": "unspin",
+  "version": "1.0.0",
+  "description": "See what your agent's shell commands are doing instead of a spinner: live steps, progress bars, elapsed time and ETAs in Claude Code's spinner, above the prompt, or in the status line.",
+  "author": { "name": "Nikolaos Kyriazis", "email": "nkyriazis@gmail.com", "url": "https://github.com/nkyriazis" },
+  "homepage": "https://github.com/nkyriazis/unspin",
+  "repository": "https://github.com/nkyriazis/unspin",
+  "license": "MIT",
+  "keywords": ["progress", "status line", "spinner", "bash", "zsh", "skill", "mod", "observability"]
+}

@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  matrix:
+    name: shells and awks (docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: tests/run.sh --docker
+
+  native:
+    name: native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: helper under the system bash (3.2 on macOS) and zsh
+        run: |
+          /bin/bash tests/helper.sh "$PWD"
+          if command -v zsh > /dev/null; then zsh tests/helper.sh "$PWD"; fi
+      - name: renderer under the system awk
+        run: bash tests/render.sh "$PWD" awk
+      - name: cli and setup
+        run: bash tests/cli.sh "$PWD"
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck --severity=warning skills/unspin/unspin.sh skills/unspin/bin/unspin skills/unspin/lib/setup.sh skills/unspin/hooks/*.sh install.sh bin/unspin tests/*.sh
+
+  plugin:
+    name: claude plugin validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: claude plugin validate --strict .

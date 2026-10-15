@@ -1,0 +1,4 @@
+✘ Find what holds port 8…  3 steps, 1 failed
+  ✔ scanning 120/120 2.3s
+  ✘ listing listeners — exit 1 0.4s
+  · pid 4121 is a stale dev server

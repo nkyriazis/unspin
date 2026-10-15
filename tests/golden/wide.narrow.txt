@@ -1,0 +1,4 @@
+✘ Ünïcödé ✨ and …  1 step, 1 failed · 1m02s
+  ✘ 処理中のファイル 3/10 — ❌ failed: 文字…
+  · combining: é and tab inside
+⠀

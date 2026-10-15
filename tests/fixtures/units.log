@@ -1,0 +1,9 @@
+@1792047000 Units
+▶ @1792047000 id=1.1 pid=ALIVE download
+% @1792047060 id=1.1 512Mi/2Gi model.safetensors
+▶ @1792047000 id=1.2 pid=ALIVE percent
+% @1792047060 id=1.2 99.5% almost
+▶ @1792047000 id=1.3 pid=ALIVE bare count
+% @1792047060 id=1.3 1532 lines
+▶ @1792047000 id=1.4 pid=ALIVE label only
+% @1792047060 id=1.4 - Compiling serde v1.0.130
