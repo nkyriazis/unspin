@@ -22,32 +22,22 @@ When Claude Code runs a long shell command, you get the command and a spinner un
 
 ## Install
 
-unspin can show the flow in two places in Claude Code. Pick one, or both.
-
-**In the spinner and above the prompt**, as in the demo. Install the plugin, from inside Claude Code 2.1.287 or newer. Your settings stay as they are.
+In Claude Code, install the plugin. There is nothing to configure.
 
 ```
 /plugin marketplace add nkyriazis/unspin
 /plugin install unspin@unspin
 ```
 
-**Under your status line**, also in Claude Code before 2.1.287. Run the installer. It copies unspin to `~/.local/share/unspin`, links the skill and the `unspin` command, adds two hooks, and draws the flow under the status line you already have, after backing up `settings.json`.
+Restart Claude Code, then ask Claude to run the `unspin demo` command.
+
+Prefer the flow under your status line, or still on Claude Code before 2.1.287? Use the installer instead. It backs up `settings.json` before changing it.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nkyriazis/unspin/main/install.sh | bash
 ```
 
-**Both.** Install the plugin first, then run the installer with `--statusline`. With the plugin in place, it only adds the status line.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/nkyriazis/unspin/main/install.sh | bash -s -- --statusline
-```
-
-To see it work, ask Claude to run the `unspin demo` command. `UNSPIN_SPINNER=0` or `UNSPIN_BAND=0` turns off either part of the plugin.
-
-**Other agents.** `npx skills add nkyriazis/unspin` installs the skill for Codex, Gemini CLI, opencode, Cursor, Goose and the other agents `skills` knows about. [Where it shows](#where-it-shows) says what you see in each.
-
-**From a clone.** `git clone https://github.com/nkyriazis/unspin && unspin/install.sh` installs that working copy.
+[More ways to install](#more-ways-to-install) covers both at once, other agents and installing from a clone.
 
 ## What the agent writes
 
@@ -118,7 +108,19 @@ bash 3.2 (the one macOS ships) to 5.3, and zsh. gawk, mawk, busybox awk and BSD 
 
 `unspin doctor` checks the install and says what to fix.
 
-If the plugin is installed but nothing shows in the spinner or above the prompt, mods may be off for your account or organization. `claude --debug` logs why a mod did not load. The status line works either way, so until that changes, add it next to the plugin as in [Install](#install) under Both.
+If the plugin is installed but nothing shows in the spinner or above the prompt, mods may be off for your account or organization. `claude --debug` logs why a mod did not load. The status line works either way, so until that changes, add it next to the plugin as in [More ways to install](#more-ways-to-install).
+
+## More ways to install
+
+**Both places.** With the plugin installed, run the installer with `--statusline`. It then adds only the status line.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nkyriazis/unspin/main/install.sh | bash -s -- --statusline
+```
+
+**Other agents.** `npx skills add nkyriazis/unspin` installs the skill for Codex, Gemini CLI, opencode, Cursor, Goose and the other agents `skills` knows about. [Where it shows](#where-it-shows) says what you see in each.
+
+**From a clone.** `git clone https://github.com/nkyriazis/unspin && unspin/install.sh` installs that working copy.
 
 ## Uninstall
 
