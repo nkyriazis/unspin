@@ -87,11 +87,11 @@ expect "set -eu: quiet happy path" 'set -eu; flow X; step a; progress 1 2; note 
 ▶ @T id=I pid=P w
 ✔ @T id=I first try'
 
-expect "progress keeps the last value" 'flow X; step s; i=0; while [ $i -lt 500 ]; do i=$((i+1)); progress $i 1000 "item $i"; done; ok' '@T X
-▶ @T id=I pid=P s
-% @T id=I 1/1000 item 1
-% @T id=I 500/1000 item 500
-✔ @T id=I'
+# The throttle is by time, so a slow machine may write a value in between.
+check "progress keeps the last value" '( UNSPIN_SESSION=last; . "$FLOW_SH"; flow X; step s; i=0; while [ $i -lt 500 ]; do i=$((i+1)); progress $i 1000 "item $i"; done; ok ) &&
+    grep "^%" "$UNSPIN_DIR/last.log" | head -n 1 | grep -q " 1/1000 item 1\$" &&
+    grep "^%" "$UNSPIN_DIR/last.log" | tail -n 1 | grep -q " 500/1000 item 500\$" &&
+    tail -n 1 "$UNSPIN_DIR/last.log" | grep -q "^✔"'
 
 check "progress is throttled" '( UNSPIN_SESSION=thr; . "$FLOW_SH"; flow X; step s; i=0; while [ $i -lt 3000 ]; do i=$((i+1)); progress $i 3000; done; ok ); [ "$(grep -c "^%" "$UNSPIN_DIR/thr.log")" -lt 40 ]'
 
