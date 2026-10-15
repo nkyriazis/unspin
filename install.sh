@@ -45,14 +45,15 @@ if [ -z "$REF" ] && [ -n "$here" ] && [ -f "$here/skills/unspin/unspin.sh" ]; th
 else
     command -v curl > /dev/null || die "needs curl"
     if [ -z "$REF" ]; then
+        # No release yet, or the API refusing us (rate limits), means main.
         REF=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null |
-            sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+            sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1) || REF=''
         REF=${REF:-main}
     fi
     say "Downloading unspin $REF"
     curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" | tar -xz -C "$tmp" ||
         die "could not download $REPO at $REF"
-    src=$(find "$tmp" -mindepth 3 -maxdepth 3 -type d -path '*/skills/unspin' | head -n 1)
+    src=$(find "$tmp" -mindepth 3 -maxdepth 3 -type d -path '*/skills/unspin' | head -n 1) || src=''
     [ -n "$src" ] && [ -f "$src/unspin.sh" ] || die "the download has no skills/unspin"
 fi
 

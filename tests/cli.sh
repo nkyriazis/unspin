@@ -122,16 +122,19 @@ mkdir -p "$T/fakebin" "$T/rel/unspin-9.9.9/skills"
 cp -R "$REPO/skills/unspin" "$T/rel/unspin-9.9.9/skills/"
 tar -czf "$T/rel.tgz" -C "$T/rel" unspin-9.9.9
 printf '%s\n' '#!/bin/sh' 'for a; do u=$a; done' 'case $u in' \
-    "    *releases/latest) echo '{\"tag_name\": \"v9.9.9\"}' ;;" \
-    "    *codeload*/v9.9.9) cat '$T/rel.tgz' ;;" \
+    '    *releases/latest) [ -n "${FAKE_RELEASE:-}" ] || exit 22; echo "{\"tag_name\": \"$FAKE_RELEASE\"}" ;;' \
+    "    *codeload*) cat '$T/rel.tgz' ;;" \
     '    *) exit 22 ;;' 'esac' > "$T/fakebin/curl"
 chmod +x "$T/fakebin/curl"
 # shellcheck disable=SC2034 # read by check
 out=$(cd "$T" && UNSPIN_HOME=$T/inst1 bash "$REPO/install.sh" --no-setup 2>&1)
 check "install.sh run from a clone installs that clone" 'printf "%s" "$out" | grep -q "Installing unspin from $REPO" && [ -x "$T/inst1/bin/unspin" ]'
 # shellcheck disable=SC2034 # read by check
-out=$(cd "$REPO" && PATH="$T/fakebin:$PATH" UNSPIN_HOME=$T/inst2 bash -s -- --no-setup < "$REPO/install.sh" 2>&1)
+out=$(cd "$REPO" && PATH="$T/fakebin:$PATH" FAKE_RELEASE=v9.9.9 UNSPIN_HOME=$T/inst2 bash -s -- --no-setup < "$REPO/install.sh" 2>&1)
 check "install.sh piped into bash downloads, even inside a clone" 'printf "%s" "$out" | grep -q "Downloading unspin v9.9.9" && [ -f "$T/inst2/unspin.sh" ]'
+# shellcheck disable=SC2034 # read by check
+out=$(cd "$T" && PATH="$T/fakebin:$PATH" UNSPIN_HOME=$T/inst3 bash -s -- --no-setup < "$REPO/install.sh" 2>&1)
+check "install.sh falls back to main when there is no release" 'printf "%s" "$out" | grep -q "Downloading unspin main" && [ -f "$T/inst3/unspin.sh" ]'
 
 echo "1..$n"
 echo "# $pass passed, $failed failed (cli)"
