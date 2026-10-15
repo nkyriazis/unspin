@@ -117,6 +117,22 @@ else
     echo "# python3 not found, setup tests skipped"
 fi
 
+# The installer, with a fake curl that serves this tree as release v9.9.9.
+mkdir -p "$T/fakebin" "$T/rel/unspin-9.9.9/skills"
+cp -R "$REPO/skills/unspin" "$T/rel/unspin-9.9.9/skills/"
+tar -czf "$T/rel.tgz" -C "$T/rel" unspin-9.9.9
+printf '%s\n' '#!/bin/sh' 'for a; do u=$a; done' 'case $u in' \
+    "    *releases/latest) echo '{\"tag_name\": \"v9.9.9\"}' ;;" \
+    "    *codeload*/v9.9.9) cat '$T/rel.tgz' ;;" \
+    '    *) exit 22 ;;' 'esac' > "$T/fakebin/curl"
+chmod +x "$T/fakebin/curl"
+# shellcheck disable=SC2034 # read by check
+out=$(cd "$T" && UNSPIN_HOME=$T/inst1 bash "$REPO/install.sh" --no-setup 2>&1)
+check "install.sh run from a clone installs that clone" 'printf "%s" "$out" | grep -q "Installing unspin from $REPO" && [ -x "$T/inst1/bin/unspin" ]'
+# shellcheck disable=SC2034 # read by check
+out=$(cd "$REPO" && PATH="$T/fakebin:$PATH" UNSPIN_HOME=$T/inst2 bash -s -- --no-setup < "$REPO/install.sh" 2>&1)
+check "install.sh piped into bash downloads, even inside a clone" 'printf "%s" "$out" | grep -q "Downloading unspin v9.9.9" && [ -f "$T/inst2/unspin.sh" ]'
+
 echo "1..$n"
 echo "# $pass passed, $failed failed (cli)"
 [ "$failed" -eq 0 ]

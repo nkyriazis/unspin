@@ -33,7 +33,12 @@ for tool in awk tar; do command -v "$tool" > /dev/null || die "needs $tool"; don
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/unspin-install.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd -P || true)
+# Run from a file (./install.sh in a clone), it installs that clone. Piped
+# into bash it has no file and no directory of its own, so it downloads.
+here=''
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    here=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P || true)
+fi
 if [ -z "$REF" ] && [ -n "$here" ] && [ -f "$here/skills/unspin/unspin.sh" ]; then
     src=$here/skills/unspin
     say "Installing unspin from $here"
